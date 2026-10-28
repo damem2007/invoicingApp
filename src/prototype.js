@@ -1,20 +1,11 @@
-const T="2026-10-28",$=s=>document.querySelector(s),SYM={USD:"$",CAD:"CA$",EUR:"€"},CN={USD:"US dollar",CAD:"Canadian dollar",EUR:"Euro"};
-const U=s=>new Date(s+"T00:00:00Z"),iso=d=>d.toISOString().slice(0,10);
-const D=s=>U(s).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric",timeZone:"UTC"});
-const addD=(s,n)=>{const d=U(s);d.setUTCDate(d.getUTCDate()+n);return iso(d)};
-const addM=(s,n)=>{const d=U(s),day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+n);const l=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,l));return iso(d)};
-const stepF=(s,f,k)=>({Weekly:()=>addD(s,7*k),Biweekly:()=>addD(s,14*k),Monthly:()=>addM(s,k),Quarterly:()=>addM(s,3*k),Yearly:()=>addM(s,12*k)})[f]();
-const M=n=>(S.ed?SYM[S.ed.cur]:"$")+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-const S={r:"overview",tab:"All",q:"",cs:["Wealth & Estate Financial Canada Inc (WEFCI)","Northwind Studio","Alder & Finch LLP"],cd:[{e:"info@wefci.com",p:"+1 (905) 232-9332",a:"100 King St W, Suite 400\nToronto, ON M5X 1A9"},{e:"accounts@northwind.studio",p:"+1 (604) 555-0142",a:"88 Powell St\nVancouver, BC V6A 1G1"},{e:"ap@alderfinch.com",p:"+1 (403) 555-0199",a:"410 8 Ave SW\nCalgary, AB T2P 1E3"}],biz:[{n:"Harbour Lane Studio",a:"120 Water St\nVancouver, BC V6B 1A4",e:"billing@harbourlane.ca",p:"+1 (604) 555-0110"},{n:"Harbour Lane Consulting",a:"22 Granville St\nVancouver, BC V6C 1S4",e:"hello@harbourlane.co",p:"+1 (604) 555-0177"}],
-inv:[{id:"INV-0001",c:0,a:2400,due:"2026-10-05",s:"Paid",rec:1},{id:"INV-0002",c:1,a:1800,due:"2026-11-12",s:"Sent"},{id:"INV-0003",c:2,a:950,due:"2026-10-15",s:"Sent"},{id:"INV-0004",c:0,a:600,due:"2026-11-20",s:"Draft"}],
-pay:[{d:"2026-10-04",inv:"INV-0001",c:0,m:"Stripe",a:2400}],
-rec:[{c:0,a:2400,f:"Monthly",next:"2026-11-01",st:"Active",auto:1}],
-ints:{gmail:{on:1,acct:"billing@harbourlane.ca"},outlook:{},stripe:{},qb:{}},w:null,m:null,t:null,ed:null,menu:0,dcur:"USD"};
-const P={gmail:["Google Gmail","Email delivery","G","#d44638"],outlook:["Microsoft Outlook","Email delivery","O","#1670c4"],stripe:["Stripe","Online payments","S","#635bff"],qb:["QuickBooks","Accounting sync","QB","#2c9f3c"]};
-const IC={overview:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',invoices:'<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/>',clients:'<circle cx="9" cy="8" r="3.5"/><path d="M2.500 20c.5-4 3-6 6.500-6s6 2 6.500 6"/><path d="M16 5a3.500 3.500 0 010 7"/>',payments:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/>',integrations:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'};
-const st=i=>i.s==="Sent"&&i.due<T?"Overdue":i.s,pl=(t,c)=>`<span class="pill ${c||t}">${t}</span>`;
-const sum=f=>S.inv.filter(f).reduce((a,i)=>a+i.a,0);
-const go=(r,t)=>{S.r=r;if(t)S.tab=t;S.q="";S.menu=0;S.ed=null;render();scrollTo(0,0)};
+import { state as S } from './modules/store.js'
+import { currencySigns as SYM, currencyNames as CN, providers as P, icons as IC } from './modules/catalog.js'
+import { today as T, formatDate as D, addDays as addD, addMonths as addM, stepFrequency as stepF } from './modules/date.js'
+import { money, invoiceStatus, pill, total } from './modules/format.js'
+import { api } from './modules/api.js'
+
+const $=s=>document.querySelector(s), M=n=>money(S,n), st=i=>invoiceStatus(i,T), pl=pill, sum=f=>total(S.inv,f);
+const go=(r,t)=>{S.r=r;if(t)S.tab=t;S.q="";S.menu=0;S.ed=null;render();window.scrollTo(0,0)};
 const toast=(m,u)=>{S.t={m,u};render();clearTimeout(S.tt);S.tt=setTimeout(()=>{S.t=null;render()},5000)};
 const isMail=()=>S.ints.gmail.on||S.ints.outlook.on;
 
@@ -164,11 +155,7 @@ function render(){const pg={overview,invoices,clients,payments,integrations,sett
 $("#root").innerHTML=shell(pg)+(S.w?wizView():"")+(S.m?modal():"")+(S.t?`<div class="toast" role="status">${S.t.m}${S.t.u?`<button onclick="S.t.u()">Undo</button>`:""}</div>`:"");}
 async function bootLedgerly(){
   try {
-    const [clientResponse, invoiceResponse, profileResponse, integrationResponse] = await Promise.all([fetch('/api/clients'), fetch('/api/invoices'), fetch('/api/business-profile'), fetch('/api/integrations')]);
-    const clients = await clientResponse.json();
-    const invoices = await invoiceResponse.json();
-    const profile = await profileResponse.json();
-    const integrationRecords = await integrationResponse.json();
+    const [clients, invoices, profile, integrationRecords] = await Promise.all([api.clients(), api.invoices(), api.profile(), api.integrations()]);
     S.cs = clients.map(client => client.name);
     S.clientIds = clients.map(client => client.id);
     S.cd = clients.map(client => ({ e: client.email, p: client.phone || '', a: client.address || '' }));
