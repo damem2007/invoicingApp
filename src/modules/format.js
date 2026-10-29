@@ -1,6 +1,7 @@
-import { currencySigns } from './catalog.js'
+import { state as S } from './store.js'
+import { currencySigns as SYM } from './catalog.js'
 
-export const money = (state, amount) => `${currencySigns[state.ed?.cur || state.dcur] || '$'}${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-export const invoiceStatus = (invoice, today) => invoice.s === 'Sent' && invoice.due && invoice.due < today ? 'Overdue' : invoice.s
-export const pill = (label, className) => `<span class="pill ${className || label}">${label}</span>`
-export const total = (invoices, predicate) => invoices.filter(predicate).reduce((sum, invoice) => sum + Number(invoice.a || 0), 0)
+export const formatMoney = n => (S.invoiceEditor ? SYM[S.invoiceEditor.cur] : SYM[S.defaultCurrency] || '$') + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+export const renderPill = (label, className) => `<span class="pill ${className || label}">${label}</span>`
+export const renderDetails = (name, address, email, phone) => `<div style="margin-top:10px;line-height:1.6"><b>${name}</b><div class="mut">${(address || "").replace(/\n/g, "<br>")}</div><div class="mut">${[email, phone].filter(Boolean).join(" · ")}</div></div>`
+

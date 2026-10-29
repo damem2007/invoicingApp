@@ -1,4 +1,4 @@
-export const today = () => new Date().toISOString().slice(0, 10);
+export const today = new Date().toISOString().slice(0, 10);
 export const toDate = (value) => new Date(`${value}T00:00:00Z`);
 export const iso = (date) => date.toISOString().slice(0, 10);
 export const formatDate = (value) =>

@@ -255,6 +255,29 @@ app.post("/api/invoices", (req, res) => {
         .get(result.lastInsertRowid),
     );
 });
+app.patch('/api/invoices/:id/status', (req, res) => {
+  const { status } = req.body;
+  if (!['Draft', 'Sent', 'Paid', 'Overdue'].includes(status)) return res.status(400).json({ error: 'Invalid invoice status.' });
+  const invoice = db.prepare('SELECT * FROM invoices WHERE id = ? OR number = ?').get(req.params.id, req.params.id);
+  if (!invoice) return res.status(404).json({ error: 'Invoice not found.' });
+  db.prepare('UPDATE invoices SET status = ?, sent_at = CASE WHEN ? = \'Sent\' THEN CURRENT_TIMESTAMP ELSE sent_at END WHERE id = ?').run(status, status, invoice.id);
+  res.json(db.prepare('SELECT * FROM invoices WHERE id = ?').get(invoice.id));
+});
+app.delete('/api/invoices/:id', (req, res) => {
+  const invoice = db.prepare('SELECT id FROM invoices WHERE id = ? OR number = ?').get(req.params.id, req.params.id);
+  if (!invoice) return res.status(404).json({ error: 'Invoice not found.' });
+  db.prepare('DELETE FROM invoices WHERE id = ?').run(invoice.id);
+  res.status(204).end();
+});
+app.post('/api/payments', (req, res) => {
+  const { invoiceId, method = 'Manual', date, amount } = req.body;
+  const invoice = db.prepare('SELECT * FROM invoices WHERE id = ? OR number = ?').get(invoiceId, invoiceId);
+  if (!invoice) return res.status(404).json({ error: 'Invoice not found.' });
+  if (!date || !(Number(amount) > 0)) return res.status(400).json({ error: 'Payment date and amount are required.' });
+  const result = db.prepare('INSERT INTO payments (invoice_id, client_id, date, source, method, amount) VALUES (?, ?, ?, ?, ?, ?)').run(invoice.id, invoice.client_id, date, 'Manual', method, Number(amount));
+  db.prepare("UPDATE invoices SET status = 'Paid' WHERE id = ?").run(invoice.id);
+  res.status(201).json(db.prepare('SELECT * FROM payments WHERE id = ?').get(result.lastInsertRowid));
+});
 function createPdf(invoice) {
   return new Promise((resolve) => {
     const chunks = [];
